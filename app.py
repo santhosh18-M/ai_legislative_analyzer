@@ -6,23 +6,19 @@ from nltk.tokenize import sent_tokenize
 from nltk.corpus import stopwords
 import PyPDF2
 import re
+import os
 
-# 🔹 Download required NLTK data
 nltk.download('punkt')
 nltk.download('stopwords')
 
 app = Flask(__name__)
 
-# 🔹 Load BART model
 summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
-# 🔹 Home Page
 @app.route('/')
 def home():
     return render_template('index.html')
 
-
-# 🔹 Extract text from PDF
 def extract_text_from_pdf(file):
     reader = PyPDF2.PdfReader(file)
     text = ""
@@ -32,20 +28,14 @@ def extract_text_from_pdf(file):
             text += content + " "
     return text
 
-
-# 🔹 Light Text Preprocessing (FOR BART)
 def clean_text(text):
-    text = re.sub(r'[^a-zA-Z0-9.,\s]', '', text)  # keep sentence structure
+    text = re.sub(r'[^a-zA-Z0-9.,\s]', '', text)  
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-
-# 🔹 Token count
 def count_tokens(text):
     return len(text.split())
 
-
-# 🔹 Compress text using BART
 def compress_text(text):
     sentences = sent_tokenize(text)
 
@@ -75,14 +65,11 @@ def compress_text(text):
 
     return summary.strip()
 
-
-# 🔹 Keyword Extraction (WITH STOPWORD REMOVAL ✅)
 def extract_keywords(text):
     stop_words = set(stopwords.words('english'))
 
     words = nltk.word_tokenize(text.lower())
 
-    # 🔥 remove stopwords like is, of, by, like
     filtered_words = [
         w for w in words
         if w.isalnum() and w not in stop_words and len(w) > 3
@@ -94,8 +81,6 @@ def extract_keywords(text):
 
     return sorted(freq, key=freq.get, reverse=True)[:10]
 
-
-# 🔥 Upload PDF API
 @app.route('/upload_pdf', methods=['POST'])
 def upload_pdf():
     if 'file' not in request.files:
@@ -103,26 +88,22 @@ def upload_pdf():
 
     file = request.files['file']
 
-    # Step 1: Extract text
     text = extract_text_from_pdf(file)
 
     if not text:
         return jsonify({"error": "No text found in PDF"})
 
-    # Step 2: Clean text (ONLY light preprocessing)
+
     cleaned_text = clean_text(text)
 
-    # Step 3: Token count
     original_tokens = count_tokens(cleaned_text)
 
-    # Step 4: BART summarization (NO stopword removal here ❗)
+
     compressed = compress_text(cleaned_text)
     compressed_tokens = count_tokens(compressed)
 
-    # Step 5: Reduction %
     reduction = ((original_tokens - compressed_tokens) / original_tokens) * 100
 
-    # Step 6: Keyword extraction (WITH stopword removal)
     keywords = extract_keywords(cleaned_text)
 
     return jsonify({
@@ -132,8 +113,6 @@ def upload_pdf():
         "summary": compressed,
         "keywords": keywords
     })
-
-
-# 🔹 Run App
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
