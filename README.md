@@ -76,3 +76,8 @@ Keyword Extraction → Token Analysis → UI Display
 ##  Installation & Setup
 
 ### 1. Clone the repository
+### 2. Install requirements
+       - pip install -r requirements.txt
+### 3. Run
+       - python app.py
+
